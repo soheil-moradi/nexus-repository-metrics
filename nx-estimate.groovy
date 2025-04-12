@@ -102,14 +102,16 @@ try {
     def jsonSlurper = new JsonSlurper()
     def json = jsonSlurper.parseText(JsonOutput.prettyPrint(JsonOutput.toJson(result)))
 
-    ["blobstores", "repositories"].each {
-        json."$it".each { key, value ->
-            metrics += "# HELP $key $it blob count and summary size\n"
-            metrics += "# TYPE $key gague\n"
-            metrics += "${it}_${key}{type=\"count\"} $value.count\n"
-            metrics += "${it}_${key}{type=\"size\"} $value.size\n"
-        }
+["blobstores", "repositories"].each {
+    json."$it".each { key, value ->
+        // Sanitize the key to ensure it is a valid metric name
+        def sanitizedKey = key.replaceAll("[^a-zA-Z0-9_]", "_") // Replace invalid characters with underscores
+        metrics += "# HELP ${sanitizedKey} ${it} blob count and summary size\n"
+        metrics += "# TYPE ${sanitizedKey} gauge\n"  // Ensure no spaces in metric type
+        metrics += "${it}_${sanitizedKey}{type=\"count\"} ${value.count}\n"
+        metrics += "${it}_${sanitizedKey}{type=\"size\"} ${value.size}\n"
     }
+}
 
     File file = new File("/tmp/nx-estimate-metrics.log")
     file.write(metrics)
